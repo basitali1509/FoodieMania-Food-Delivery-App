@@ -9,10 +9,11 @@ class snackBar {
           borderRadius: BorderRadius.circular(5.0),
         ),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(milliseconds: 1000),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.only(bottom: 650, left: 3, right: 3),
+        dismissDirection: DismissDirection.horizontal,
+        margin: const EdgeInsets.only(bottom: 620, left: 5, right: 5),
         content: Text(
           title,
           style: GoogleFonts.cabin(fontSize: 20, fontWeight: FontWeight.w600),
