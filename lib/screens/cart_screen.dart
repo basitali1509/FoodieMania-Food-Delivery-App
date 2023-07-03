@@ -1,12 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app_ui/Utils/snackbar.dart';
-import 'package:food_delivery_app_ui/database/db_helper.dart';
-
 import 'package:food_delivery_app_ui/screens/contact_screen.dart';
-
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:provider/provider.dart';
+import '../Provider/cart_screen_provider.dart';
 import '../database/db_model.dart';
 
 class CartScreen extends StatefulWidget {
@@ -17,35 +14,18 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  DatabaseHelper? databaseHelper;
-
-  late Future<List<Carts>> cartsList;
   double totalPrice = 0;
-  int deliveryTime = 0;
-  int len = 0;
-  bool isEmpty = true;
   @override
   void initState() {
     super.initState();
-
-    databaseHelper = DatabaseHelper();
     loadData();
   }
 
   loadData() async {
-    cartsList = databaseHelper!.getCarts();
-    List<Carts> carts = await cartsList;
-    isEmpty = carts.isEmpty;
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    double newTotalPrice = 0;
-    deliveryTime = carts.length * 15;
-    for (var order in carts) {
-      newTotalPrice += order.price * order.quantity;
-    }
-    setState(() {
-      totalPrice = newTotalPrice;
-      len = carts.length;
-    });
+    await cartProvider.loadData();
+    await cartProvider.loadHomePage();
   }
 
   @override
@@ -59,6 +39,7 @@ class _CartScreenState extends State<CartScreen> {
               elevation: 0,
               leading: InkWell(
                   onTap: () {
+                    // loadData();
                     Navigator.pop(context);
                   },
                   child: const Icon(
@@ -83,23 +64,25 @@ class _CartScreenState extends State<CartScreen> {
                 ],
               ),
             ),
-            Expanded(
-                child: FutureBuilder(
-                    future: cartsList,
-                    builder: (context, AsyncSnapshot<List<Carts>> snapshot) {
-                      // itemCount: snapshot.data!.length;
-                      if (!snapshot.hasData) {
-                        return const CircleAvatar(
-                          radius: 35,
-                          child: Icon(Icons.fastfood),
-                        );
-                      } else {
+            Expanded(child:
+                Consumer<CartProvider>(builder: (context, cartProvider, _) {
+              if (cartProvider.cartsList == null) {
+                return const CircleAvatar(
+                  radius: 35,
+                  child: Icon(Icons.fastfood),
+                );
+              } else {
+                return FutureBuilder<List<Carts>>(
+                    future: cartProvider.cartsList,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        List<Carts> carts = snapshot.data!;
                         return ListView.builder(
                           physics: const BouncingScrollPhysics(),
                           itemCount: snapshot.data!.length,
                           itemBuilder: (context, index) {
-                            Carts order = snapshot.data![index];
-
+                            Carts order =
+                                carts[snapshot.data!.length - 1 - index];
                             return Container(
                               height: 100,
                               margin: const EdgeInsets.all(15.0),
@@ -124,8 +107,7 @@ class _CartScreenState extends State<CartScreen> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(16.0),
                                       image: DecorationImage(
-                                        image: AssetImage(
-                                            snapshot.data![index].imageURL),
+                                        image: AssetImage(order.imageURL),
                                         fit: BoxFit.cover,
                                       ),
                                     ),
@@ -158,13 +140,8 @@ class _CartScreenState extends State<CartScreen> {
                                           children: [
                                             GestureDetector(
                                               onTap: () {
-                                                setState(() {
-                                                  if (order.quantity > 1) {
-                                                    order.quantity -= 1;
-                                                  }
-                                                  databaseHelper!.update(order);
-                                                  loadData();
-                                                });
+                                                cartProvider
+                                                    .decrementQuantity(order);
                                               },
                                               child: Container(
                                                 width: 25.0,
@@ -196,16 +173,8 @@ class _CartScreenState extends State<CartScreen> {
                                             ),
                                             GestureDetector(
                                               onTap: () {
-                                                setState(() {
-                                                  order.quantity += 1;
-
-                                                  if (kDebugMode) {
-                                                    print(
-                                                        totalPrice.toString());
-                                                  }
-                                                  databaseHelper!.update(order);
-                                                  loadData();
-                                                });
+                                                cartProvider
+                                                    .incrementQuantity(order);
                                               },
                                               child: Container(
                                                 width: 25.0,
@@ -234,11 +203,8 @@ class _CartScreenState extends State<CartScreen> {
                                     children: [
                                       IconButton(
                                           onPressed: () {
-                                            setState(() {
-                                              databaseHelper!
-                                                  .delete(order.id!.toInt());
-                                              loadData();
-                                            });
+                                            cartProvider
+                                                .deleteOrder(order.id!.toInt());
                                           },
                                           icon: const Icon(
                                             Icons.cancel,
@@ -267,8 +233,12 @@ class _CartScreenState extends State<CartScreen> {
                             );
                           },
                         );
+                      } else {
+                        return const SizedBox();
                       }
-                    })),
+                    });
+              }
+            })),
             Container(
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
@@ -287,81 +257,85 @@ class _CartScreenState extends State<CartScreen> {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.only(
-                  top: 25,
-                  left: 16,
-                  right: 16,
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        Text(
-                          'Delivery Time:',
-                          style: GoogleFonts.cabin(
-                              fontSize: 17, fontWeight: FontWeight.w600),
+                  padding: const EdgeInsets.only(
+                    top: 25,
+                    left: 16,
+                    right: 16,
+                  ),
+                  child: Consumer<CartProvider>(
+                      builder: (context, cartProvider, _) {
+                    return Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Text(
+                              'Delivery Time:',
+                              style: GoogleFonts.cabin(
+                                  fontSize: 17, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              cartProvider.deliveryTime.toString() + ' min',
+                              style: GoogleFonts.cabin(
+                                  fontSize: 17, fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
-                        Text(
-                          deliveryTime.toString() + ' min',
-                          style: GoogleFonts.cabin(
-                              fontSize: 17, fontWeight: FontWeight.w600),
+                        const SizedBox(height: 12.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Text(
+                              'Total Cost:',
+                              style: GoogleFonts.cabin(
+                                  fontSize: 17, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              '\$${cartProvider.totalPrice.toStringAsFixed(2)}',
+                              style: GoogleFonts.cabin(
+                                  fontSize: 17,
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        Text(
-                          'Total Cost:',
-                          style: GoogleFonts.cabin(
-                              fontSize: 17, fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          '\$${totalPrice.toStringAsFixed(2)}',
-                          style: GoogleFonts.cabin(
-                              fontSize: 17,
-                              color: Colors.green.shade700,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20.0),
-                    Container(
-                      height: 50,
-                      padding: const EdgeInsets.only(top: 10, bottom: 10),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (!isEmpty) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => ContactScreen(
-                                        amount: (totalPrice + 1)
-                                            .toInt()
-                                            .toString())));
-                          } else {
-                            snackBar.showSnackBar(context, 'Cart is empty');
-                          }
-                        },
-                        child: Text(
-                          'Payment',
-                          style: GoogleFonts.cabin(
-                              fontSize: 17, fontWeight: FontWeight.w600),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          elevation: 12,
-                          padding: const EdgeInsets.symmetric(horizontal: 70),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                        const SizedBox(height: 20.0),
+                        Container(
+                          height: 50,
+                          padding: const EdgeInsets.only(top: 10, bottom: 10),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (!cartProvider.isEmpty) {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => ContactScreen(
+                                            amount:
+                                                (cartProvider.totalPrice + 1)
+                                                    .toInt()
+                                                    .toString())));
+                              } else {
+                                snackBar.showSnackBar(context, 'Cart is empty');
+                              }
+                            },
+                            child: Text(
+                              'Payment',
+                              style: GoogleFonts.cabin(
+                                  fontSize: 17, fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              elevation: 12,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 70),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-              ),
+                        )
+                      ],
+                    );
+                  })),
             ),
           ],
         ),
