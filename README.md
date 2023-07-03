@@ -1,10 +1,18 @@
-# flutter_evaluation
+# FoodieMania - Food Delivery App
 
-A new Flutter project.
 
-## Getting Started
+![App Image](https://res.cloudinary.com/dyduvs3s5/image/upload/v1688323366/u1z1sdppdcrlwo5atvqa.png)
 
-This project is a starting point for a Flutter application.
+
+## Demo
+
+- [See Demo](https://www.linkedin.com/feed/update/urn:li:activity:7070425602775801856/)
+
+## About App
+
+A food delivery application with Stripe payment integration. The app allows user to order their favourite food from nearby restaurant.
+
+
 
 A few resources to get you started if this is your first Flutter project:
 
