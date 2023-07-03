@@ -4,6 +4,8 @@ import 'package:food_delivery_app_ui/ViewModel/stripe_payment.dart';
 import 'package:food_delivery_app_ui/database/db_model.dart';
 import 'package:food_delivery_app_ui/screens/cart_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../Provider/payment_screen_provider.dart';
 import '../Utils/Reusable Components/animated_toggle_button.dart';
 import '../database/db_helper.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
@@ -20,14 +22,10 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   Map<String, dynamic>? paymentIntentData;
-  bool payConfirm = false;
 
   DatabaseHelper? databaseHelper;
-
-  late Future<List<Carts>> cartsList;
-
   late List<Carts> carts;
-  int len = 0;
+
   void togglePaymentMethod(bool isOn) {
     setState(() {
       turn = isOn;
@@ -37,18 +35,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
-
     databaseHelper = DatabaseHelper();
     loadData();
   }
 
   loadData() async {
-    cartsList = databaseHelper!.getCarts();
-    carts = await cartsList;
-
-    setState(() {
-      len = carts.length;
-    });
+    carts = await databaseHelper!.getCarts();
   }
 
   @override
@@ -56,7 +48,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Column(
+          child: Consumer<PaymentProvider>(builder: (context, provider, _) {
+        return Column(
           children: [
             AppBar(
               backgroundColor: Colors.transparent,
@@ -64,8 +57,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               leading: InkWell(
                   onTap: () {
                     Navigator.pop(context);
+                    provider.setPayConfirm(false);
                     setState(() {
-                      payConfirm = false;
                       turn = true;
                     });
                   },
@@ -223,16 +216,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 ),
                                 InkWell(
                                     onTap: () async {
-                                      setState(() {
-                                        payConfirm = false;
-                                      });
+                                      provider.setPayConfirm(false);
                                       await makePayment(
                                           context,
                                           widget.amount,
                                           "Payment Successful!",
                                           "Your payment has been successfully processed.",
                                           AlertType.success,
-                                          payConfirm,
+                                          provider.payConfirm,
                                           databaseHelper!,
                                           carts);
                                     },
@@ -292,9 +283,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 ),
                                 InkWell(
                                   onTap: () {
-                                    setState(() {
-                                      payConfirm = true;
-                                    });
+                                    provider.setPayConfirm(true);
+                                    // setState(() {
+                                    //   payConfirm = true;
+                                    // });
                                   },
                                   child: Container(
                                     height: 38,
@@ -310,7 +302,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                         const SizedBox(
                                           width: 20,
                                         ),
-                                        payConfirm
+                                        provider.payConfirm
                                             ? const Icon(
                                                 Icons.circle,
                                                 color: Colors.white,
@@ -335,7 +327,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                     ),
                                   ),
                                 ),
-                                payConfirm
+                                provider.payConfirm
                                     ? Column(
                                         children: [
                                           const SizedBox(
@@ -352,7 +344,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                                     "Order Confirmed!",
                                                     "Your order has been confirmed successfully",
                                                     AlertType.success,
-                                                    payConfirm,
+                                                    provider.payConfirm,
                                                     databaseHelper!,
                                                     carts);
                                               },
@@ -387,8 +379,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ),
           ],
-        ),
-      ),
+        );
+      })),
     );
   }
 }
