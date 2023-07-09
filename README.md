@@ -1,7 +1,7 @@
 # FoodieMania - Food Delivery App
 
 
-![App Image](https://res.cloudinary.com/dyduvs3s5/image/upload/v1688323366/u1z1sdppdcrlwo5atvqa.png)
+![ProjectImage](https://res.cloudinary.com/dyduvs3s5/image/upload/v1688323366/u1z1sdppdcrlwo5atvqa.png)
 
 
 ## Demo
